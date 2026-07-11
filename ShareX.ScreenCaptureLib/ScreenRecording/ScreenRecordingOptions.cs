@@ -131,7 +131,7 @@ namespace ShareX.ScreenCaptureLib
 
                         Screen[] screens = Screen.AllScreens.OrderBy(x => !x.Primary).ToArray();
                         int monitorIndex = 0;
-                        Rectangle captureArea = screens[0].Bounds;
+                        Rectangle captureArea = Rectangle.Empty;
                         int maxIntersectionArea = 0;
 
                         for (int i = 0; i < screens.Length; i++)
@@ -147,6 +147,11 @@ namespace ShareX.ScreenCaptureLib
                                 monitorIndex = i;
                                 captureArea = new Rectangle(intersection.X - screen.Bounds.X, intersection.Y - screen.Bounds.Y, intersection.Width, intersection.Height);
                             }
+                        }
+
+                        if (maxIntersectionArea == 0)
+                        {
+                            throw new Exception($"Capture area {CaptureArea} does not intersect with any screen.");
                         }
 
                         if (FFmpeg.IsEvenSizeRequired)
