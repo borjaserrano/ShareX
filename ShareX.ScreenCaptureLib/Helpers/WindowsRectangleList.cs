@@ -148,6 +148,17 @@ namespace ShareX.ScreenCaptureLib
                 {
                     return true;
                 }
+
+                // Skip click-through windows (GPU overlays, screen sharing borders,
+                // on-screen displays, etc.). Mouse input passes through them, so they
+                // can never be the window the user is pointing at. Because they are
+                // usually screen sized, treating them as the hovered window makes
+                // window selection capture the whole screen instead of the intended
+                // window.
+                if (exStyle.HasFlag(WindowStyles.WS_EX_LAYERED, WindowStyles.WS_EX_TRANSPARENT))
+                {
+                    return true;
+                }
             }
 
             SimpleWindowInfo simpleWindowInfo = new SimpleWindowInfo(handle);
