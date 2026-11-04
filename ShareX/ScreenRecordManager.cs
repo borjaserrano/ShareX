@@ -306,6 +306,7 @@ namespace ShareX
                 catch (Exception e)
                 {
                     DebugHelper.WriteException(e);
+                    recordForm.InvokeSafe(() => MessageBox.Show(e.Message, "ShareX", MessageBoxButtons.OK, MessageBoxIcon.Error));
                 }
 
                 if (taskSettings.CaptureSettings.ScreenRecordTwoPassEncoding && !abortRequested && screenRecorder != null && File.Exists(path))
