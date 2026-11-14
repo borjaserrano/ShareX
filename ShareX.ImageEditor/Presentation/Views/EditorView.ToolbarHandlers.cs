@@ -72,7 +72,10 @@ namespace ShareX.ImageEditor.Presentation.Views
             toolbar.TextItalicChanged += OnToolbarTextItalicChanged;
             toolbar.ShadowChanged += OnToolbarShadowChanged;
             toolbar.ShadowSettingsChanged += OnToolbarShadowSettingsChanged;
+            toolbar.ArrowRoundedCornersChanged += OnToolbarArrowRoundedCornersChanged;
+            toolbar.FreehandArrowChanged += OnToolbarFreehandArrowChanged;
             toolbar.SpeechBalloonTailChanged += OnToolbarSpeechBalloonTailChanged;
+            toolbar.SpeechBalloonAutoSizeChanged += OnToolbarSpeechBalloonAutoSizeChanged;
             toolbar.EffectEllipseChanged += OnToolbarEffectEllipseChanged;
             toolbar.FavoriteEffectsMenuRequested += OnFavoriteEffectsMenuRequested;
         }
@@ -112,7 +115,10 @@ namespace ShareX.ImageEditor.Presentation.Views
             toolbar.TextItalicChanged -= OnToolbarTextItalicChanged;
             toolbar.ShadowChanged -= OnToolbarShadowChanged;
             toolbar.ShadowSettingsChanged -= OnToolbarShadowSettingsChanged;
+            toolbar.ArrowRoundedCornersChanged -= OnToolbarArrowRoundedCornersChanged;
+            toolbar.FreehandArrowChanged -= OnToolbarFreehandArrowChanged;
             toolbar.SpeechBalloonTailChanged -= OnToolbarSpeechBalloonTailChanged;
+            toolbar.SpeechBalloonAutoSizeChanged -= OnToolbarSpeechBalloonAutoSizeChanged;
             toolbar.EffectEllipseChanged -= OnToolbarEffectEllipseChanged;
             toolbar.FavoriteEffectsMenuRequested -= OnFavoriteEffectsMenuRequested;
         }
@@ -281,9 +287,36 @@ namespace ShareX.ImageEditor.Presentation.Views
             ApplySelectedShadowSettings();
         }
 
+        private void OnToolbarArrowRoundedCornersChanged(object? sender, bool isEnabled)
+        {
+            var selected = _selectionController.SelectedShape;
+
+            if (selected?.Tag is ArrowAnnotation arrowAnnotation && selected is global::Avalonia.Controls.Shapes.Path arrowPath)
+            {
+                arrowAnnotation.RoundedCorners = isEnabled;
+                AnnotationVisualFactory.UpdateVisualControl(arrowPath, arrowAnnotation);
+            }
+        }
+
+        private void OnToolbarFreehandArrowChanged(object? sender, bool isEnabled)
+        {
+            var selected = _selectionController.SelectedShape;
+
+            if (selected?.Tag is FreehandAnnotation freehandAnnotation && selected is global::Avalonia.Controls.Shapes.Path freehandPath)
+            {
+                freehandAnnotation.ShowArrowHead = isEnabled;
+                AnnotationVisualFactory.UpdateVisualControl(freehandPath, freehandAnnotation);
+            }
+        }
+
         private void OnToolbarSpeechBalloonTailChanged(object? sender, bool isEnabled)
         {
             ApplySelectedSpeechBalloonTail(isEnabled);
+        }
+
+        private void OnToolbarSpeechBalloonAutoSizeChanged(object? sender, bool isEnabled)
+        {
+            ApplySelectedSpeechBalloonAutoSize(isEnabled);
         }
 
         private void OnToolbarEffectEllipseChanged(object? sender, bool isEllipse)
@@ -321,11 +354,6 @@ namespace ShareX.ImageEditor.Presentation.Views
             {
                 vm.ZoomToFitCommand.Execute(null);
             }
-        }
-
-        private void OnSidebarScrollChanged(object? sender, ScrollChangedEventArgs e)
-        {
-            // TODO: Restore sidebar scrollbar overlay logic
         }
 
         private void OnToolbarScrollChanged(object? sender, ScrollChangedEventArgs e)
@@ -837,7 +865,12 @@ namespace ShareX.ImageEditor.Presentation.Views
                 balloonControl.Annotation is SpeechBalloonAnnotation balloonAnnotation)
             {
                 balloonAnnotation.TailEnabled = isEnabled;
-                balloonControl.InvalidateVisual();
+                AnnotationVisualFactory.UpdateVisualControl(
+                    balloonControl,
+                    balloonAnnotation,
+                    AnnotationVisualMode.Persisted,
+                    _editorCore.CanvasSize.Width,
+                    _editorCore.CanvasSize.Height);
                 _selectionController.UpdateSelectionHandles();
                 return;
             }
@@ -848,6 +881,20 @@ namespace ShareX.ImageEditor.Presentation.Views
                 numberAnnotation.TailEnabled = isEnabled;
                 AnnotationVisualFactory.UpdateVisualControl(stepControl, numberAnnotation);
                 _selectionController.UpdateSelectionHandles();
+            }
+        }
+
+        private void ApplySelectedSpeechBalloonAutoSize(bool isEnabled)
+        {
+            if (_selectionController.SelectedShape is SpeechBalloonControl { Annotation: SpeechBalloonAnnotation balloonAnnotation })
+            {
+                balloonAnnotation.AutoSize = isEnabled;
+
+                if (isEnabled)
+                {
+                    _selectionController.FitSelectedSpeechBalloonToText();
+                    ScheduleAutoExpandCanvas(balloonAnnotation);
+                }
             }
         }
 

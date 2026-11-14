@@ -733,6 +733,42 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
         }
 
         [ObservableProperty]
+        private bool _arrowRoundedCorners = true;
+
+        partial void OnArrowRoundedCornersChanged(bool value)
+        {
+            bool isArrow = ActiveTool == EditorTool.Arrow;
+
+            if (ActiveTool == EditorTool.Select && SelectedAnnotation != null)
+            {
+                isArrow = SelectedAnnotation is ArrowAnnotation;
+            }
+
+            if (isArrow)
+            {
+                Options.ArrowRoundedCorners = value;
+            }
+        }
+
+        [ObservableProperty]
+        private bool _freehandArrow;
+
+        partial void OnFreehandArrowChanged(bool value)
+        {
+            bool isFreehand = ActiveTool == EditorTool.Freehand;
+
+            if (ActiveTool == EditorTool.Select && SelectedAnnotation != null)
+            {
+                isFreehand = SelectedAnnotation is FreehandAnnotation;
+            }
+
+            if (isFreehand)
+            {
+                Options.FreehandArrow = value;
+            }
+        }
+
+        [ObservableProperty]
         private bool _speechBalloonTail = true;
 
         partial void OnSpeechBalloonTailChanged(bool value)
@@ -753,6 +789,18 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
             else if (appliesToStep)
             {
                 Options.StepTail = value;
+            }
+        }
+
+        [ObservableProperty]
+        private bool _speechBalloonAutoSize;
+
+        partial void OnSpeechBalloonAutoSizeChanged(bool value)
+        {
+            if (ActiveTool == EditorTool.SpeechBalloon ||
+                (ActiveTool == EditorTool.Select && SelectedAnnotation is SpeechBalloonAnnotation))
+            {
+                Options.SpeechBalloonAutoSize = value;
             }
         }
 
@@ -968,10 +1016,26 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
             _ => false
         };
 
+        public bool ShowArrowRoundedCorners => ShowArrowStyle;
+
+        public bool ShowFreehandArrow => ActiveTool switch
+        {
+            EditorTool.Freehand => true,
+            EditorTool.Select => _selectedAnnotation is FreehandAnnotation,
+            _ => false
+        };
+
         public bool ShowSpeechBalloonTail => ActiveTool switch
         {
             EditorTool.SpeechBalloon or EditorTool.Step => true,
             EditorTool.Select => SelectedAnnotation is SpeechBalloonAnnotation or NumberAnnotation,
+            _ => false
+        };
+
+        public bool ShowSpeechBalloonAutoSize => ActiveTool switch
+        {
+            EditorTool.SpeechBalloon => true,
+            EditorTool.Select => SelectedAnnotation is SpeechBalloonAnnotation,
             _ => false
         };
 
@@ -1079,6 +1143,8 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
             OnPropertyChanged(nameof(ShowFontFamily));
             OnPropertyChanged(nameof(ShowBorderStyle));
             OnPropertyChanged(nameof(ShowArrowStyle));
+            OnPropertyChanged(nameof(ShowArrowRoundedCorners));
+            OnPropertyChanged(nameof(ShowFreehandArrow));
             OnPropertyChanged(nameof(ShowCursorType));
             OnPropertyChanged(nameof(ShowCornerRadius));
             OnPropertyChanged(nameof(ShowStrength));
@@ -1088,13 +1154,14 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
             OnPropertyChanged(nameof(ShowTextItalic));
             OnPropertyChanged(nameof(ShowShadow));
             OnPropertyChanged(nameof(ShowSpeechBalloonTail));
+            OnPropertyChanged(nameof(ShowSpeechBalloonAutoSize));
             OnPropertyChanged(nameof(ActiveToolIcon));
             OnPropertyChanged(nameof(ActiveToolName));
             OnPropertyChanged(nameof(EffectStrengthMaximum));
             OnPropertyChanged(nameof(ShowToolOptionsSeparator));
         }
 
-        public bool ShowToolOptionsSeparator => ShowBorderColor || ShowFillColor || ShowTextColor || ShowThickness || ShowFontSize || ShowStepStartNumber || ShowStepType || ShowTextHorizontalAlignment || ShowFontFamily || ShowBorderStyle || ShowArrowStyle || ShowCursorType || ShowCornerRadius || ShowStrength || ShowSpotlightBlur || ShowEffectEllipse || ShowTextStyle || ShowShadow || ShowSpeechBalloonTail;
+        public bool ShowToolOptionsSeparator => ShowBorderColor || ShowFillColor || ShowTextColor || ShowThickness || ShowFontSize || ShowStepStartNumber || ShowStepType || ShowTextHorizontalAlignment || ShowFontFamily || ShowBorderStyle || ShowArrowStyle || ShowCursorType || ShowCornerRadius || ShowStrength || ShowSpotlightBlur || ShowEffectEllipse || ShowTextStyle || ShowShadow || ShowSpeechBalloonTail || ShowSpeechBalloonAutoSize;
 
         [ObservableProperty]
         private EditorTool _activeTool = EditorTool.Rectangle;
@@ -1203,6 +1270,7 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
                     ShadowEnabled = Options.Shadow;
                     SelectedBorderStyle = NormalizeBorderStyle(Options.BorderStyle);
                     FontSize = Options.TextFontSize;
+                    FreehandArrow = Options.FreehandArrow;
                     break;
                 case EditorTool.Arrow:
                     SelectedColorValue = Options.BorderColor;
@@ -1212,6 +1280,7 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
                     ShadowEnabled = Options.Shadow;
                     FontSize = Options.TextFontSize;
                     SelectedArrowStyle = NormalizeArrowStyle(Options.ArrowStyle);
+                    ArrowRoundedCorners = Options.ArrowRoundedCorners;
                     break;
                 case EditorTool.Cursor:
                     SelectedCursorType = NormalizeCursorType(Options.CursorType);
@@ -1235,6 +1304,7 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
                     CornerRadius = Options.CornerRadius;
                     ShadowEnabled = Options.Shadow;
                     SpeechBalloonTail = Options.SpeechBalloonTail;
+                    SpeechBalloonAutoSize = Options.SpeechBalloonAutoSize;
                     FontSize = Options.SpeechBalloonFontSize;
                     SelectedFontFamily = NormalizeFontFamily(Options.SpeechBalloonFontFamily);
                     SelectedTextHorizontalAlignment = NormalizeTextHorizontalAlignment(Options.SpeechBalloonTextHorizontalAlignment);
