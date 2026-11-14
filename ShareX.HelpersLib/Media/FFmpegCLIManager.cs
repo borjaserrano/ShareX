@@ -279,6 +279,25 @@ namespace ShareX.HelpersLib
             return devices;
         }
 
+        public Size GetDirectShowVideoSize(string videoDevice)
+        {
+            Size size = Size.Empty;
+
+            Run($"-list_options true -f dshow -i video={Helpers.EscapeCLIText(videoDevice)}");
+
+            foreach (Match match in Regex.Matches(Output.ToString(), @"max s=(\d+)x(\d+)", RegexOptions.CultureInvariant))
+            {
+                Size current = new Size(int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
+
+                if ((long)current.Width * current.Height > (long)size.Width * size.Height)
+                {
+                    size = current;
+                }
+            }
+
+            return size;
+        }
+
         public void ConcatenateVideos(string[] inputFiles, string outputFile, bool autoDeleteInputFiles = false)
         {
             string listFile = outputFile + ".txt";

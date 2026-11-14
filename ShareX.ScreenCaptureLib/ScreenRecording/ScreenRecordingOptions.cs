@@ -45,9 +45,14 @@ namespace ShareX.ScreenCaptureLib
         public bool DrawCursor { get; set; }
         public FFmpegOptions FFmpeg { get; set; } = new FFmpegOptions();
 
+        private Size videoCropSize;
+
         public string GetFFmpegCommands()
         {
             string commands;
+
+            videoCropSize = Size.Empty;
+            bool useCustomCommands = !IsLossless && FFmpeg.UseCustomCommands && !string.IsNullOrEmpty(FFmpeg.CustomCommands);
 
             if (IsRecording && !string.IsNullOrEmpty(FFmpeg.VideoSource) &&
                 FFmpeg.VideoSource.Equals(FFmpegCaptureDevice.ScreenCaptureRecorder.Value, StringComparison.OrdinalIgnoreCase))
@@ -60,9 +65,14 @@ namespace ShareX.ScreenCaptureLib
                 RegistryHelpers.CreateRegistry(registryPath, "capture_height", CaptureArea.Height);
                 RegistryHelpers.CreateRegistry(registryPath, "default_max_fps", 60);
                 RegistryHelpers.CreateRegistry(registryPath, "capture_mouse_default_1", DrawCursor ? 1 : 0);
+
+                if (!useCustomCommands)
+                {
+                    FixScreenCaptureRecorderSize(registryPath);
+                }
             }
 
-            if (!IsLossless && FFmpeg.UseCustomCommands && !string.IsNullOrEmpty(FFmpeg.CustomCommands))
+            if (useCustomCommands)
             {
                 commands = FFmpeg.CustomCommands.
                     Replace("$fps$", FPS.ToString(), StringComparison.OrdinalIgnoreCase).
@@ -80,6 +90,36 @@ namespace ShareX.ScreenCaptureLib
             }
 
             return commands.Trim();
+        }
+
+        // screen-capture-recorder multiplies the capture size by the integer DPI scale of the FFmpeg process,
+        // so at 200% scaling or higher it outputs a frame larger than the requested area.
+        private void FixScreenCaptureRecorderSize(string registryPath)
+        {
+            Size outputSize;
+
+            using (FFmpegCLIManager ffmpeg = new FFmpegCLIManager(FFmpeg.FFmpegPath))
+            {
+                outputSize = ffmpeg.GetDirectShowVideoSize(FFmpeg.VideoSource);
+            }
+
+            if (outputSize == CaptureArea.Size)
+            {
+                return;
+            }
+
+            int scaleX = outputSize.Width / CaptureArea.Width;
+            int scaleY = outputSize.Height / CaptureArea.Height;
+
+            if (scaleX > 1 && scaleY > 1 && outputSize.Width == CaptureArea.Width * scaleX && outputSize.Height == CaptureArea.Height * scaleY)
+            {
+                RegistryHelpers.CreateRegistry(registryPath, "capture_width", (CaptureArea.Width + scaleX - 1) / scaleX);
+                RegistryHelpers.CreateRegistry(registryPath, "capture_height", (CaptureArea.Height + scaleY - 1) / scaleY);
+            }
+
+            DebugHelper.WriteLine($"screen-capture-recorder output size is {outputSize.Width}x{outputSize.Height} for capture area {CaptureArea.Width}x{CaptureArea.Height}, cropping video to capture area.");
+
+            videoCropSize = CaptureArea.Size;
         }
 
         public string GetFFmpegArgs(bool isCustom = false)
@@ -203,6 +243,11 @@ namespace ShareX.ScreenCaptureLib
             else
             {
                 args.Append($"-i \"{InputPath}\" ");
+            }
+
+            if (IsRecording && !videoCropSize.IsEmpty)
+            {
+                args.Append($"-vf \"crop='min(iw,{videoCropSize.Width})':'min(ih,{videoCropSize.Height})':0:0\" ");
             }
 
             if (!string.IsNullOrEmpty(FFmpeg.UserArgs))
